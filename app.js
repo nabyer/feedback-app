@@ -1,9 +1,13 @@
 import express from 'express';
 import pkg from 'pg';
+import cors from 'cors';
 
 // Creating the express app
 const app = express();
 const PORT = 3000;
+
+// Setup CORS
+app.use(cors());
 
 // Middleware for parsing JSON
 app.use(express.json());

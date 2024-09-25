@@ -1,0 +1,67 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: feedback-app-database-service
+  namespace: feedback-app
+spec:
+  selector:
+    app: feedback-app-db
+  ports:
+  - protocol: TCP
+    port: 5432
+    targetPort: 5432
+  type: ClusterIP
+
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: feedback-app-database
+  namespace: feedback-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: feedback-app-db
+  template:
+    metadata:
+      namespace: feedback-app
+      labels:
+        app: feedback-app-db
+        environment: test
+    spec:
+      containers:
+      - name: feedback-postgres-db
+        image: postgres:16.4
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "250m"
+          limits:
+            memory: "256Mi"
+            cpu: "500m"
+        ports:
+        - containerPort: 5432
+        env:
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: feedback-app-secret
+              key: DB_PASSWORD
+        - name: POSTGRES_DB
+          valueFrom:
+            configMapKeyRef:
+              name: feedback-app-config
+              key: DB_NAME
+        livenessProbe:
+          exec:
+            command:
+            - "pg_isready"
+            - "-U"
+            - "postgres"
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 5
+          failureThreshold: 5
+          successThreshold: 1

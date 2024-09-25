@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: feedback-app-config
+  namespace: feedback-app
+data:
+  DB_NAME: feedbackdb
+  DB_HOST: feedback-app-database-service
+  DB_PORT: "5432"
