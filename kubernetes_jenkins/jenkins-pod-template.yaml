@@ -1,0 +1,51 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    jenkins: slave
+spec:
+  serviceAccountName: jenkins-sa
+  containers:
+  - name: docker
+    image: docker:latest
+    resources:
+      requests:
+        memory: "128Mi"
+        cpu: "250m"
+      limits:
+        memory: "128Mi"
+        cpu: "250m"
+    command:
+    - cat
+    tty: true
+    volumeMounts:
+    - name: docker-socket
+      mountPath: /var/run/docker.sock
+  - name: kubectl
+    image: galaataman/kubectl:latest
+    resources:
+      requests:
+        memory: "128Mi"
+        cpu: "250m"
+      limits:
+        memory: "128Mi"
+        cpu: "250m"
+    command:
+    - cat
+    tty: true
+  - name: k6
+    image: galaataman/k6:latest
+    resources:
+      requests:
+        memory: "128Mi"
+        cpu: "250m"
+      limits:
+        memory: "128Mi"
+        cpu: "250m"
+    command:
+    - cat
+    tty: true
+  volumes:
+  - hostPath:
+      path: /var/run/docker.sock
+    name: docker-socket

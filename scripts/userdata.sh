@@ -9,7 +9,7 @@ service docker start
 systemctl enable docker
 
 #Install Docker-Compose
-curl -l "https://github.com/docker/compose/releases/download/v2.0.1/docker-compose-$(uname -s)-$(uname -m)" /usr/local/bin/docker-compose
+curl -L "https://github.com/docker/compose/releases/download/v2.0.1/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
 chmod +x /usr/local/bin/docker-compose
 
 #Download Docker-Compose App Config
@@ -18,4 +18,4 @@ cd /home/ec2-user/feedback-app
 wget https://raw.githubusercontent.com/atamankina/feedback-app/main/docker-compose.yml
 
 #Start the app
-sudo docker-compose up -d
+docker-compose up -d

@@ -1,0 +1,28 @@
+# Start with the latest alpine base image
+FROM alpine:latest
+
+# Set environment variables for the latest k6 version
+ENV K6_VERSION="0.54.0"
+
+# Install dependencies
+RUN apk add --no-cache \
+    ca-certificates \
+    tar \
+    curl \
+    bash
+
+# Download and install the latest version of k6
+RUN curl -sSL https://github.com/grafana/k6/releases/download/v${K6_VERSION}/k6-v${K6_VERSION}-linux-amd64.tar.gz \
+    | tar -C /usr/bin/ -xzv --strip-components=1 k6-v${K6_VERSION}-linux-amd64/k6
+
+# Verify installation by checking the k6 version
+RUN k6 version
+
+# Set the default working directory
+WORKDIR /k6
+
+# Default entrypoint to use k6
+ENTRYPOINT ["k6"]
+
+# Show k6 help if no arguments are provided
+CMD ["--help"]

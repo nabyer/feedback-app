@@ -1,0 +1,25 @@
+# Use the latest version of alpine as base image
+FROM alpine:latest
+
+# Set environment variables for kubectl version
+ENV KUBECTL_VERSION="v1.31.0"
+
+# Install curl and bash, which are required for downloading and installing kubectl
+RUN apk add --no-cache curl bash ca-certificates
+
+# Download and install the latest version of kubectl
+RUN curl -LO "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl" \
+    && chmod +x kubectl \
+    && mv kubectl /usr/local/bin/
+
+# Verify the kubectl installation
+RUN kubectl version --client
+
+# Set the default working directory
+WORKDIR /root
+
+# Default entrypoint to run kubectl
+ENTRYPOINT ["kubectl"]
+
+# Default command (show help)
+CMD ["--help"]

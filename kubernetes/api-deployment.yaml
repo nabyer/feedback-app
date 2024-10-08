@@ -29,7 +29,7 @@ spec:
     spec:
       containers:
       - name: feedback-app-backend-api
-        image: galaataman/feedback-app:v4.0
+        image: galaataman/feedback-app:latest
         resources:
           requests:
             memory: "64Mi"
@@ -39,6 +39,7 @@ spec:
             cpu: "250m"
         ports:
         - containerPort: 3000
+        imagePullPolicy: Always
         env:
         - name: DB_USER
           valueFrom:
@@ -61,19 +62,19 @@ spec:
               name: feedback-app-secret
               key: DB_PASSWORD
         - name: DB_PORT
-          valuefrom:
+          valueFrom:
             configMapKeyRef:
               name: feedback-app-config
               key: DB_PORT
         livenessProbe:
           httpGet:
-            path: /feedback
+            path: /feedback 
             port: 3000
           initialDelaySeconds: 5
           periodSeconds: 5
           timeoutSeconds: 5
           failureThreshold: 5
-          successThreshold: 5
+          successThreshold: 1
 
 ---
 apiVersion: autoscaling/v2
@@ -81,7 +82,7 @@ kind: HorizontalPodAutoscaler
 metadata:
   name: feedback-app-api-hpa
 spec:
-  scaleTargetRef: 
+  scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
     name: feedback-app-api
@@ -89,8 +90,8 @@ spec:
   maxReplicas: 4
   metrics:
   - type: Resource
-    resource: 
+    resource:
       name: cpu
-      target: 
+      target:
         type: Utilization
-        averageUtilization: 50 
+        averageUtilization: 50
