@@ -1,4 +1,4 @@
-import { pool } from './db.js';
+import { pool } from '../db.js';
 
 export const addFeedback = async (title, text) => {
     const query = `INSERT INTO feedback (title, text) VALUES ($1, $2) RETURNING *;`;

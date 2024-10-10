@@ -21,18 +21,23 @@ const addCheck = (response, checks) => {
 
 // POST /feedback 
 const createFeedback = () => {
-    const payload = JSON.stringify({
+    const payload = {
         title: 'Test Feedback',
         text: 'This is a test feedback created by integration tests.'
-    });
+    };
 
     const headers = { 'Content-Type': 'application/json' };
 
-    const response = http.post(`${BASE_URL}/feedback`, payload, { headers });
+    const response = http.post(`${BASE_URL}/feedback`, JSON.stringify(payload), { headers });
 
     addCheck(response, {
-        'POST /feedback valid data: status code 201 (Created)': (res) => res.status === 201,
-        'POST /feedback response has message': (res) => res.json('message') === 'Feedback erfolgreich gespeichert.'
+        'POST /feedback valid data: status code 201 (Created)': 
+            (res) => res.status === 201,
+        'POST /feedback response has message': 
+            (res) => res.json('message') === 'Feedback erfolgreich gespeichert.',
+        'POST /feedback created matched sent data':
+            (res) => res.json().data.title === payload.title &&
+                    res.json().data.text === payload.text    
     });
 };
 
@@ -45,8 +50,15 @@ const createFeedbackNoData = () => {
     const response = http.post(`${BASE_URL}/feedback`, payload, { headers });
 
     addCheck(response, {
-        'POST /feedback missing data: status code 400 (Bad Request)': (res) => res.status === 400,
-        'POST /feedback error message for missing data': (res) => res.json('message') === 'title und text sind im body erforderlich.'
+        'POST /feedback missing data: status code 400 (Bad Request)': 
+            (res) => res.status === 400,
+        'POST /feedback error message for missing data': 
+            (res) => res.json().errors.length === 2,
+        'POST /feedback error message 1 for missing data (title)': 
+            (res) => res.json().errors[0].msg === 'Titel ist erforderlich.',
+        'POST /feedback error message 2 for missing data (text)': 
+            (res) => res.json().errors[1].msg === 'Text ist erforderlich.'
+            
     });
 };
 
@@ -61,8 +73,10 @@ const createFeedbackNoTitle = () => {
     const response = http.post(`${BASE_URL}/feedback`, payload, { headers });
 
     addCheck(response, {
-        'POST /feedback missing title: status code 400 (Bad Request)': (res) => res.status === 400,
-        'POST /feedback error message for missing title': (res) => res.json('message') === 'title und text sind im body erforderlich.'
+        'POST /feedback missing title: status code 400 (Bad Request)': 
+            (res) => res.status === 400,
+        'POST /feedback error message for missing title': 
+            (res) => res.json().errors[0].msg === 'Titel ist erforderlich.'
     });
 };
 
@@ -77,8 +91,10 @@ const createFeedbackNoText = () => {
     const response = http.post(`${BASE_URL}/feedback`, payload, { headers });
 
     addCheck(response, {
-        'POST /feedback missing text: status code 400 (Bad Request)': (res) => res.status === 400,
-        'POST /feedback error message for missing text': (res) => res.json('message') === 'title und text sind im body erforderlich.'
+        'POST /feedback missing text: status code 400 (Bad Request)': 
+            (res) => res.status === 400,
+        'POST /feedback error message for missing text': 
+            (res) => res.json().errors[0].msg === 'Text ist erforderlich.'
     });
 };
 
@@ -94,8 +110,14 @@ const createFeedbackInvalidData = () => {
     const response = http.post(`${BASE_URL}/feedback`, payload, { headers });
 
     addCheck(response, {
-        'POST /feedback invalid data: status code 400 (Bad Request)': (res) => res.status === 400,
-        'POST /feedback error message for invalid data': (res) => res.json('message') === 'title und text sind im body erforderlich.'
+        'POST /feedback invalid data: status code 400 (Bad Request)': 
+            (res) => res.status === 400,
+        'POST /feedback error message for invalid data': 
+            (res) => res.json().errors.length === 2,
+        'POST /feedback error message 1 for invalid data (title)': 
+            (res) => res.json().errors[0].msg === 'Titel ist erforderlich.',
+        'POST /feedback error message 2 for invalid data (text)': 
+            (res) => res.json().errors[1].msg === 'Text ist erforderlich.'
     });
 };
 
@@ -104,8 +126,10 @@ const getAllFeedback = () => {
     const response = http.get(`${BASE_URL}/feedback`);
 
     addCheck(response, {
-        'GET /feedback status code 200 (OK)': (res) => res.status === 200,
-        'GET /feedback response contains an array': (res) => Array.isArray(res.json())
+        'GET /feedback status code 200 (OK)': 
+            (res) => res.status === 200,
+        'GET /feedback response contains an array': 
+            (res) => Array.isArray(res.json().data)
     });
 };
 
@@ -114,8 +138,10 @@ const deleteFeedback = () => {
     const response = http.del(`${BASE_URL}/feedback/Test Feedback`);
 
     addCheck(response, {
-        'DELETE /feedback/:title status code 200 (OK)': (res) => res.status === 200,
-        'DELETE /feedback/:title response has message': (res) => res.json('message') === 'Feedback erfolgreich geloescht.'
+        'DELETE /feedback/:title status code 200 (OK)': 
+            (res) => res.status === 200,
+        'DELETE /feedback/:title response has message': 
+            (res) => res.json('message') === 'Feedback erfolgreich geloescht.'
     });
 };
 
@@ -124,8 +150,10 @@ const deleteNonExistentFeedback = () => {
     const response = http.del(`${BASE_URL}/feedback/NonExistentFeedback`);
 
     addCheck(response, {
-        'DELETE /feedback/:title status code 404 (Not Found)': (res) => res.status === 404,
-        'DELETE /feedback/:title response has error message': (res) => res.json('message') === 'Feedback nicht gefunden.'
+        'DELETE /feedback/:title status code 404 (Not Found)': 
+            (res) => res.status === 404,
+        'DELETE /feedback/:title response has error message': 
+            (res) => res.json('error') === 'Feedback nicht gefunden.'
     });
 };
 

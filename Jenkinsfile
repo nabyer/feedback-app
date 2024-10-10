@@ -11,7 +11,7 @@ pipeline {
     }
     
     environment {
-        GITHUB_REPO = 'https://github.com/atamankina/feedback-app.git'        
+        GITHUB_REPO = 'https://github.com/atamankina/feedback-app.git'
         DOCKER_CREDENTIALS_ID = 'dockerhub-token'
         DOCKER_REPO = 'galaataman/feedback-app'
         IMAGE_TAG = "${BUILD_NUMBER}"
@@ -21,21 +21,34 @@ pipeline {
     stages {        
         stage('Checkout') {           
             steps {
+                echo 'Checking out code...'
                 git url: "${GITHUB_REPO}", branch: 'main'
             }            
+        }
+        stage('Run Unit Tests') {
+            steps {
+                echo 'Running unit tests...'
+                container('node') {
+                    sh '''
+                        npm install
+                        npm test  -- --maxWorkers=50%
+                    '''
+                }
+                echo 'Unit tests completed successfully.'
+            }
         }       
         stage('Docker Build') {   
             steps {
-                echo 'Building the app...'
+                echo 'Building the Docker image...'
                 container('docker') {
                     sh 'docker build -t $DOCKER_IMAGE .'
                 }
-                echo 'Build successful.'
+                echo 'Docker build successful.'
             }    
         }
         stage('Docker Push') {
             steps {
-                echo 'Pushing the image to Docker Hub...'
+                echo 'Pushing the Docker image to Docker Hub...'
                 container('docker') {
                     script {
                         docker.withRegistry('', "${DOCKER_CREDENTIALS_ID}") {
@@ -43,12 +56,12 @@ pipeline {
                         }
                     }  
                 }
-                echo 'Push successful.'
+                echo 'Docker image pushed successfully.'
             }
         }
-        stage('Kubernetes Deploy Dependencies') {
+        stage('Kubernetes Deploy App Dependencies') {
             steps {
-                echo 'Deploying to kubernetes cluster...'
+                echo 'Deploying API dependencies to kubernetes cluster...'
                 container('kubectl') {
                     sh 'kubectl apply -f kubernetes/secret.yaml'
                     sh 'kubectl apply -f kubernetes/configmap.yaml'
@@ -58,67 +71,85 @@ pipeline {
                 echo 'Deployment successful.'
             }
         }
-        stage('Kubernetes Deploy API') {
+        stage('Kubernetes Deploy App') {
             steps {
-                echo 'Deploying to kubernetes cluster...'
+                echo 'Deleting previous App deployment...'
+                container('kubectl') {
+                    sh '''
+                        kubectl delete deployment feedback-app-api || true  
+                    '''
+                } 
+                echo 'Previous App deployment deleted successfully.'
+                echo 'Creating new App deployment...'
                 container('kubectl') {
                     script {
-                        sh 'sed -i "s|image: galaataman/feedback-app:latest|image: $DOCKER_IMAGE|g" kubernetes/api-deployment.yaml'
-                        sh 'kubectl apply -f kubernetes/api-deployment.yaml'
+                        sh '''
+                            sed -i "s|image: galaataman/feedback-app:latest|image: $DOCKER_IMAGE|g" kubernetes/api-deployment.yaml
+                        '''
+                        sh '''
+                            kubectl apply -f kubernetes/api-deployment.yaml
+                            kubectl rollout status deployment feedback-app-api --timeout=300s
+                        '''
                     }
                 } 
-                echo 'Deployment successful.'
+                echo 'New App deployment created successfully.'
             }
         }
         stage('Check App Status') {
             steps {
-                echo 'Checking if the App is reachable...'
-                script {
-                    def retries = 30
-                    def delay = 10
-                    def url = "http://feedback-app-api-service:3000/feedback"
+                echo 'Waiting for the App to become reachable...'
+                container('kubectl') {
+                    script {
+                        def retries = 30
+                        def delay = 10
+                        def url = "http://feedback-app-api-service:3000/feedback" 
 
-                    for (int i = 0; i < retries; i++) {
-                        def result = sh(script: "curl -s -o /dev/null -w '%{http_code}' $url", returnStdout: true).trim()
-
-                        if (result == '200') {
-                            echo 'App is reachable!'
-                            break
-                        } else {
-                            echo "App health check ${i + 1}: HTTP $result . Retrying in ${delay} seconds."
+                        for (int i = 0; i < retries; i++) {
+                            def result = sh(script: "curl -s -o /dev/null -w '%{http_code}' $url", returnStatus: true)
+                            
+                            if (result == 0) {
+                                def http_code = sh(script: "curl -s -o /dev/null -w '%{http_code}' $url", returnStdout: true).trim()
+                                echo "App health check attempt ${i + 1}: HTTP $http_code"
+                                if (http_code == '200') {
+                                    echo 'App is reachable!'
+                                    break
+                                }
+                            } else {
+                                echo "App is not reachable yet (attempt ${i + 1}). Retrying in ${delay} seconds..."
+                            }
+                            
+                            if (i == retries - 1) {
+                                error 'App is still unreachable after multiple attempts.'
+                            }
+                            sleep delay
                         }
-
-                        if (i == retries -1) {
-                            error "App is unreachable after ${retries} attempts."
-                        }
-
-                        sleep delay
                     }
                 }
             }
         }
-        stage('Integration Tests') {
+        stage('Run Integration Tests') {
             steps {
                 echo 'Running integration tests...'
                 container('k6') {
-                    sh 'k6 run --env BASE_URL=http://feedback-app-api-service:3000 ./tests/feedback-api.integration.js'
+                    sh 'k6 run --env BASE_URL=http://feedback-app-api-service:3000 --verbose ./tests/feedback-api.integration.js'
                 }
-                echo 'Integration tests ready.'
+                echo 'Integration tests completed successfully.'
             }
         }
     }
-
     post {
         always {
             echo 'Post: DockerHub URL...'
             script {
                 def dockerHubUrl = "https://hub.docker.com/r/${DOCKER_REPO}/tags?name=${IMAGE_TAG}"
-                echo "DockerHub URL for the build: ${dockerHubUrl}"
-
+                echo "DockerHub URL for the image: ${dockerHubUrl}"
+                writeFile file: 'dockerhub-url.txt', text: dockerHubUrl
+                archiveArtifacts artifacts: 'dockerhub-url.txt'
             }
         }
+
         success {
-            echo 'Build successful, pushing the image as latest...'
+            echo 'Integration tests succeeded, tagging the image with "latest"...'
             container('docker') {
                 script {
                     docker.withRegistry('', "${DOCKER_CREDENTIALS_ID}") {
@@ -127,7 +158,7 @@ pipeline {
                     }
                 }
             }
-            echo 'The latest Docker image successfully updated.'
+            echo 'Docker image successfully pushed with "latest" tag.'
         }
     }   
 }

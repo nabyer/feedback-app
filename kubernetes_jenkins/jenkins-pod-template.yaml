@@ -45,6 +45,18 @@ spec:
     command:
     - cat
     tty: true
+  - name: node
+    image: node:latest
+    resources:
+      requests:
+        memory: "128Mi"
+        cpu: "250m"
+      limits:
+        memory: "128Mi"
+        cpu: "250m"
+    command:
+    - cat
+    tty: true
   volumes:
   - hostPath:
       path: /var/run/docker.sock

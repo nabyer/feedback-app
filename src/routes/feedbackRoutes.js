@@ -11,7 +11,7 @@ feedbackRouter.post('/feedback', feedbackValidation, async (req, res) => {
     try {
         const { title, text } = req.body;
         const newFeedback = await addFeedback(title, text);
-        sendSuccess(res, newFeedback, "Feedback erfolgreich gespeichert.");
+        sendSuccess(res, newFeedback, "Feedback erfolgreich gespeichert.", 201);
     } catch (error) {
         sendError(res, "Fehler beim Speichern des Feedbacks.");
     }
@@ -39,7 +39,7 @@ feedbackRouter.delete('/feedback/:title', async (req, res) => {
 
         const result = await deleteFeedbackByTitle(title);
         if (result.rowCount === 0) {
-            return sendError(res, "Feedback nicht gefunden", 404);
+            return sendError(res, "Feedback nicht gefunden.", 404);
         }
         sendSuccess(res, null, "Feedback erfolgreich geloescht.");
     } catch (error) {
