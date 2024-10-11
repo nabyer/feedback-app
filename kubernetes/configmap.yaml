@@ -4,5 +4,5 @@ metadata:
   name: feedback-app-config
 data:
   DB_NAME: feedbackdb
-  DB_HOST: feedback-app-database-service
+  DB_HOST: feedback-app-datenbank.cvhx0c6cxhvx.eu-central-1.rds.amazonaws.com
   DB_PORT: "5432"
