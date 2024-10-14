@@ -57,6 +57,18 @@ spec:
     command:
     - cat
     tty: true
+  - name: terraform
+    image: hashicorp/terraform:latest
+    resources:
+      requests:
+        memory: "256Mi"
+        cpu: "500m"
+      limits:
+        memory: "512Mi"
+        cpu: "1000m"
+    command:
+    - cat
+    tty: true
   volumes:
   - hostPath:
       path: /var/run/docker.sock

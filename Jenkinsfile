@@ -37,6 +37,66 @@ pipeline {
                 echo 'Unit tests completed successfully.'
             }
         }       
+        stage('Terraform Init') {
+            steps {
+                echo 'Initializing Terraform...'
+                container('terraform') {
+                    script {
+                        dir('terraform-rds') {
+                            sh 'rm -rf .terraform .terraform.lock.hcl'
+                            sh 'terraform init'
+                        }
+                    }
+                }
+            }
+        }
+        stage('Terraform Plan') {
+            steps {
+                echo 'Planning Terraform execution...'
+                container('terraform') {
+                    script {
+                        dir('terraform-rds') {
+                            sh 'terraform plan -out=tfplan -input=false'
+                        }
+                    }
+                }
+            }
+        }
+        stage('Terraform Apply') {
+            steps {
+                echo 'Applying Terraform configuration...'
+                container('terraform') {
+                    script {
+                        dir('terraform-rds') {
+                            sh 'terraform apply -input=false tfplan'
+                        }
+                    }
+                }
+            }
+        }
+        stage('Retrieve RDS Endpoint') {
+            steps {
+                echo 'Retrieving the RDS endpoint...'
+                container('terraform') {
+                    script {
+                        dir('terraform-rds') {
+                            def rdsEndpoint = sh(script: 'terraform output -raw rds_endpoint', returnStdout: true).trim()
+                            echo "RDS Endpoint: ${rdsEndpoint}"
+                            env.RDS_ENDPOINT = rdsEndpoint
+                        }
+                    }
+                }
+                echo 'Updating Kubernetes ConfigMap with RDS endpoint...'
+                container('kubectl') {
+                    script {
+                        sh """
+                            sed -i 's|DB_HOST:.*|DB_HOST: ${env.RDS_ENDPOINT}|g' ./kubernetes/configmap.yaml
+                        """
+                        sh 'cat ./kubernetes/configmap.yaml'
+                    }
+                }
+            }
+        } 
         stage('Docker Build') {   
             steps {
                 echo 'Building the Docker image...'
@@ -84,7 +144,7 @@ pipeline {
                 container('kubectl') {
                     script {
                         sh '''
-                            sed -i "s|image: galaataman/feedback-app:latest|image: $DOCKER_IMAGE|g" kubernetes/api-deployment.yaml
+                            sed -i "s|image: $DOCKER_REPO:latest|image: $DOCKER_IMAGE|g" kubernetes/api-deployment.yaml
                         '''
                         sh '''
                             kubectl apply -f kubernetes/api-deployment.yaml
